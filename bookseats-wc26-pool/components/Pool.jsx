@@ -108,10 +108,15 @@ export default function Pool() {
   async function pushBracket(data, submitted) {
     localStorage.setItem(LS_DATA, JSON.stringify(data));
     if (!configured || !player) return;
-    await supabase.from("brackets").upsert({
+    // Ensure the players row exists first — covers anyone who joined before the
+    // RLS policies were created (otherwise the bracket's foreign key would fail).
+    const { error: pErr } = await supabase.from("players").upsert({ id: player.id, name: player.name });
+    if (pErr) { console.error("BookSeats: player save failed:", pErr.message); return; }
+    const { error } = await supabase.from("brackets").upsert({
       player_id: player.id, name: player.name, data,
       submitted: submitted, updated_at: new Date().toISOString()
     });
+    if (error) console.error("BookSeats: bracket save failed:", error.message);
   }
 
   function handleChange(next) {
