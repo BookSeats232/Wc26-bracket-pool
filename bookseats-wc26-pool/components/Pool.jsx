@@ -27,6 +27,7 @@ export default function Pool() {
   const [viewing, setViewing] = useState(null);
   const [logoOk, setLogoOk] = useState(true);
   const [live, setLive] = useState(false);
+  const [synced, setSynced] = useState(false);
   const [adminUnlocked, setAdminUnlocked] = useState(false);
   const [adminInput, setAdminInput] = useState("");
 
@@ -54,33 +55,26 @@ export default function Pool() {
 
     if (!configured) return;
 
-    (async () => {
-      const { data: bs } = await supabase.from("brackets").select("*");
-      if (bs) setBrackets(bs);
+    let cancelled = false;
+    async function fetchAll() {
+      const { data: bs, error: be } = await supabase.from("brackets").select("*");
+      if (!cancelled && !be && bs) { setBrackets(bs); setSynced(true); }
       const { data: rs } = await supabase.from("results").select("data").eq("id", 1).maybeSingle();
-      if (rs) setResults(rs.data || {});
-    })();
+      if (!cancelled && rs) setResults(rs.data || {});
+    }
+    fetchAll();
+    // Poll as a reliable fallback so the leaderboard stays current even when the
+    // realtime websocket can't reach SUBSCRIBED (some networks/projects block it).
+    const poll = setInterval(fetchAll, 8000);
 
+    // Realtime gives instant updates when it connects; on any change, just re-fetch.
     const ch = supabase
       .channel("wc26-pool")
-      .on("postgres_changes", { event: "*", schema: "public", table: "brackets" }, (payload) => {
-        setBrackets((prev) => {
-          if (payload.eventType === "DELETE") {
-            const id = payload.old && payload.old.player_id;
-            return prev.filter((b) => b.player_id !== id);
-          }
-          const row = payload.new;
-          if (!row || !row.player_id) return prev;
-          const others = prev.filter((b) => b.player_id !== row.player_id);
-          return [...others, row];
-        });
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "results" }, (payload) => {
-        if (payload.new) setResults(payload.new.data || {});
-      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "brackets" }, fetchAll)
+      .on("postgres_changes", { event: "*", schema: "public", table: "results" }, fetchAll)
       .subscribe((status) => setLive(status === "SUBSCRIBED"));
 
-    return () => { supabase.removeChannel(ch); };
+    return () => { cancelled = true; clearInterval(poll); supabase.removeChannel(ch); };
   }, []);
 
   // ---- adopt my server row once (handles a fresh device / page reload) ----
@@ -185,9 +179,9 @@ export default function Pool() {
               )}
             </div>
             <div className="head-spacer" />
-            <span className={"tag" + (live ? " live" : "")}>
+            <span className={"tag" + ((live || synced) ? " live" : "")}>
               {configured
-                ? <>{live && <span className="live-dot" />} {live ? "Live" : "Connecting…"} · {scored.length} {scored.length === 1 ? "bracket" : "brackets"}</>
+                ? <>{(live || synced) && <span className="live-dot" />} {(live || synced) ? "Live" : "Connecting…"} · {scored.length} {scored.length === 1 ? "bracket" : "brackets"}</>
                 : "Local only · not synced"}
             </span>
           </div>
@@ -219,7 +213,7 @@ export default function Pool() {
         {tab === "live" && (
           <LiveTab
             scored={scored} results={results} resultsLive={resultsLive}
-            player={player} myRank={myRank} setViewing={setViewing} live={live} configured={configured}
+            player={player} myRank={myRank} setViewing={setViewing} live={live || synced} configured={configured}
           />
         )}
 
