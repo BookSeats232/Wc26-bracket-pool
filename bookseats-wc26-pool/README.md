@@ -108,6 +108,7 @@ npm run dev                          # http://localhost:3000
 
 - **Security model:** this is a lightweight, fun internal pool. It uses Supabase's public anon key from the browser with permissive table policies, the Results tab is gated by a shared code, and each player's edits are tied to a token stored in their browser. That's appropriate for trusted coworkers — it is not hardened against a determined bad actor. For tighter control, add Supabase Auth and stricter row-level policies.
 - **Typeface:** the brand face is **Alt Riviera** (proprietary). This build uses a clean system sans as a stand-in. If you have an Alt Riviera web license, add the font files to `public/fonts/`, define an `@font-face` in `app/globals.css`, and set it as the first family on `body`.
+- **Betting odds:** each team shows its implied "% to advance" in the group stage, captured from VegasInsider on June 11, 2026 (a fun reference snapshot, not live-updating). Edit values in `lib/odds.js` to refresh them.
 - **Tournament data:** groups reflect the official draw of December 5, 2025. The Round-of-32 third-place seeding uses FIFA's allowed-group constraints (always produces a valid bracket); it approximates rather than reproduces FIFA's exact 495-row Annex C lookup — fine for a prediction pool.
 - **Real-time not updating?** Make sure you ran the full `supabase-schema.sql` (it includes the `alter publication … add table` lines that enable realtime), and that all three env vars are set in Vercel.
 

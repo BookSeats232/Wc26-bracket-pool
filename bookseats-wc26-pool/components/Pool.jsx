@@ -149,10 +149,21 @@ export default function Pool() {
   const resultsLive = hasResults(results);
 
   const scored = useMemo(() => {
-    return brackets
+    // Start from everyone we've received from Supabase...
+    const map = new Map();
+    brackets.forEach((b) => map.set(b.player_id, b));
+    // ...then always overlay the current player's latest local bracket, so it
+    // shows on the leaderboard instantly even before (or without) a server sync.
+    if (player) {
+      map.set(player.id, {
+        player_id: player.id, name: player.name,
+        data: myData, submitted: mySubmitted, updated_at: new Date().toISOString()
+      });
+    }
+    return [...map.values()]
       .map((b) => ({ ...b, pts: score(b.data, results || {}).total }))
       .sort((a, b) => b.pts - a.pts || (a.name || "").localeCompare(b.name || ""));
-  }, [brackets, results]);
+  }, [brackets, results, player, myData, mySubmitted]);
 
   const myRank = player ? scored.findIndex((b) => b.player_id === player.id) + 1 : 0;
 
@@ -174,11 +185,11 @@ export default function Pool() {
               )}
             </div>
             <div className="head-spacer" />
-            {configured && (
-              <span className={"tag" + (live ? " live" : "")}>
-                {live && <span className="live-dot" />} {live ? "Live" : "Connecting…"} · {brackets.length} {brackets.length === 1 ? "bracket" : "brackets"}
-              </span>
-            )}
+            <span className={"tag" + (live ? " live" : "")}>
+              {configured
+                ? <>{live && <span className="live-dot" />} {live ? "Live" : "Connecting…"} · {scored.length} {scored.length === 1 ? "bracket" : "brackets"}</>
+                : "Local only · not synced"}
+            </span>
           </div>
           <nav className="tabs">
             <button className={"tab" + (tab === "bracket" ? " active" : "")} onClick={() => setTab("bracket")}>My Bracket</button>
