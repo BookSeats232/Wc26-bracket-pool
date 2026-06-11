@@ -1,0 +1,10 @@
+Drop your FIFA × bookseats logo file in THIS folder, named exactly:
+
+    logo.png
+
+(A transparent PNG works best, roughly 600–960px wide. The header auto-sizes it to 38px tall.)
+
+Until you add logo.png, the header shows a clean text fallback ("bookseats" with a trophy),
+so the app still works without it — but the real lockup looks far better.
+
+You can delete this .txt file once your logo is in place.
