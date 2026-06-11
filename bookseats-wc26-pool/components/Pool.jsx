@@ -286,16 +286,21 @@ function BracketTab({ player, nameInput, setNameInput, join, myData, handleChang
       <div className="hero" style={{ paddingBottom: 0 }}>
         <p className="positioning">Playing as {player.name}</p>
         <h1>Your Bracket</h1>
-        <p className="lede">Picks save as you go. Lock it in before the opening whistle on June 11.</p>
+        <p className="lede">Picks save as you go and you&apos;re already on the live leaderboard — no need to lock in to be counted. Lock in just makes it official before the opening whistle on June 11.</p>
       </div>
-      <div className="row" style={{ margin: "18px 0 6px" }}>
-        <button className="btn btn-primary" onClick={submitBracket} disabled={!complete}>
+      <div style={{ height: "var(--s5)" }} />
+      <BracketEditor data={myData} onChange={handleChange} />
+      <div className="submit-bar">
+        <div className="submit-info">
+          {complete
+            ? <><b>Bracket complete.</b> Lock it in to make it official.</>
+            : "Finish all 12 groups and pick your 8 third-place teams to lock in."}
+          {mySubmitted && <span className="tag live">Submitted</span>}
+        </div>
+        <button className="btn btn-primary btn-lg" onClick={submitBracket} disabled={!complete}>
           {mySubmitted ? "Update My Bracket" : "Lock In My Bracket"} <span className="arr">→</span>
         </button>
-        <span className="tag">{complete ? "Bracket complete" : "Finish all 12 groups + 8 thirds to lock in"}</span>
-        {mySubmitted && <span className="tag live">Submitted</span>}
       </div>
-      <BracketEditor data={myData} onChange={handleChange} />
     </section>
   );
 }

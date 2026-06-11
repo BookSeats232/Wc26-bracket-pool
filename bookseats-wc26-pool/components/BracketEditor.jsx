@@ -4,6 +4,7 @@ import {
   GROUPS, GROUP_LETTERS, HOST, R32, R16, QF, SF, FINAL, THIRD_NEEDED,
   flag, teamAt, resolve
 } from "../lib/tournament";
+import { teamOdds, ODDS_SOURCE, ODDS_AS_OF } from "../lib/odds";
 
 // Controlled component. data = {order,thirds,ko}. onChange(next) for edits.
 // readOnly renders the same bracket without interaction (used to view others' picks).
@@ -36,8 +37,16 @@ export default function BracketEditor({ data, onChange, readOnly = false }) {
   function toggleTeam(g, team) {
     const o = order[g] ? [...order[g]] : [];
     const i = o.indexOf(team);
-    if (i >= 0) o.splice(i, 1);
-    else if (o.length < 4) o.push(team);
+    if (i >= 0) {
+      o.splice(i, 1);
+    } else if (o.length < 4) {
+      o.push(team);
+      // Auto-fill 4th place once the 3rd is chosen — only one team can remain.
+      if (o.length === 3) {
+        const last = GROUPS[g].find((t) => !o.includes(t));
+        if (last) o.push(last);
+      }
+    }
     commit({ ...data, order: { ...order, [g]: o } });
   }
   function clearGroup(g) {
@@ -73,7 +82,8 @@ export default function BracketEditor({ data, onChange, readOnly = false }) {
         <h2>Group Stage</h2>
         <span className="sub">
           {readOnly ? "Predicted finishing order — top two advance, plus the best thirds."
-            : "Click teams in order of finish — 1st, 2nd, 3rd, 4th. Top two advance automatically."}
+            : "Click teams in order of finish — pick 1st, 2nd, 3rd and the 4th fills in. Top two advance automatically."}
+          {" "}% = implied chance to advance ({ODDS_SOURCE}, {ODDS_AS_OF}).
         </span>
       </div>
       <div className="groups">
@@ -85,9 +95,13 @@ export default function BracketEditor({ data, onChange, readOnly = false }) {
                 <button className="mini" onClick={() => clearGroup(g)}>clear</button>
               )}
             </h3>
-            <p className="hint">{readOnly ? "Their call" : "Click in order of finish"}</p>
+            <p className="hint">
+              <span>{readOnly ? "Their call" : "Click in order of finish"}</span>
+              <span>% to advance</span>
+            </p>
             {GROUPS[g].map((team) => {
               const r = rankOf(g, team);
+              const o = teamOdds(g, team);
               return (
                 <div
                   className="team"
@@ -99,6 +113,7 @@ export default function BracketEditor({ data, onChange, readOnly = false }) {
                   <span className="rk">{r || "·"}</span>
                   <span className="flag">{flag(team)}</span>
                   <span className="nm">{team}{HOST[team] ? "  ·  host" : ""}</span>
+                  {o && <span className="odds" title="Implied chance to advance to the knockouts">{o.advance}%</span>}
                 </div>
               );
             })}
@@ -133,6 +148,7 @@ export default function BracketEditor({ data, onChange, readOnly = false }) {
               <span className="gl">3rd · {g}</span>
               <span className="flag">{team ? flag(team) : "⚪"}</span>
               <span className="nm">{team || "set Group " + g}</span>
+              {team && teamOdds(g, team) && <span className="odds">{teamOdds(g, team).advance}%</span>}
             </div>
           );
         })}
